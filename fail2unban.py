@@ -26,6 +26,7 @@ def refresh():
         ssh_connect()
 
     if status:
+        data_frame.grid_forget()
         stdin, stdout, stderr = \
             ssh.exec_command("echo '" + password +
                              "' | sudo -S /usr/bin/fail2ban-client status")
@@ -121,8 +122,8 @@ def unban(unban_jail_name, unban_ip):
     # stdin, stdout, stderr = \
     #     ssh.exec_command("echo '" + password +
     #                      "' | sudo -S /usr/bin/fail2ban-client status')
-    # print(unban_jail_name)
-    # print(unban_ip)
+    print(unban_jail_name)
+    print(unban_ip)
     status_label.configure(text='--> unban <--')
     stdin, stdout, stderr = ssh.exec_command(
         "echo '" + password + "' | sudo -S /usr/bin/fail2ban-client set " +
@@ -150,7 +151,7 @@ status_label = tkinter.Message(main_window, text='--> Nincs kapcsolat <--',
                                width=200)
 status_label.grid(row=0, column=1)
 
-data_frame.grid(row=1)
+data_frame.grid(row=1, columnspan=2)
 
 main_window.mainloop()
 
