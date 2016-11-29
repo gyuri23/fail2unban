@@ -1,18 +1,42 @@
 #!/usr/bin/python
+
+# ========================= Beállítandó paraméterek ============================
+
+# Kötelező paraméter.
+# host = ip cím, vagy szerver URL
+# pl: host = 'email.server.com'
+host = ''
+# username = felhasználónév, amivel belép ssh-val a megadott host nevű szerverre
+# Kötelező paraméter.
+# pl: username = 'mickey'
+username = ''
+# password = jelszó
+# Nem kötelező paraméter! Ha üres akkor a script bekéri futtatások a jelszót.
+# pl: password = ''          # A script bekéri a jelszót.
+# pl: password = 'pwd123'    # A script nem kér jelszót, gombnyomásra lefut.
+password = ''
+# port = portszám, amin az ssh kapcsolat működni fog.
+# Kötelező paraméter.
+port = 22
+
+
+# ======================= Innetől nemm kell változtatni ========================
+
 import tkinter
 import datetime
 import paramiko
 
-# ---------------------------- Globális változók ------------------------------
 
-host = ''
-username = ''
-password = ''
-port = 22
+# ---------------------------- Globális változók -------------------------------
+
+# Globális változó az aktuális jelszó, illetve ssh állapotok tárolására.
 status = False
 
 
-# ------------------------------- Függvények ----------------------------------
+# =============================== Függvények ===================================
+
+
+# ------------------- Képernyő frissítése, ip lista lekérés --------------------
 
 def refresh():
     global password
@@ -26,7 +50,9 @@ def refresh():
         ssh_connect()
 
     if status:
-        data_frame.grid_forget()
+        data_frame.destroy()
+        data_frame = tkinter.Frame(main_window)
+        data_frame.grid(row=1, columnspan=2)
         stdin, stdout, stderr = \
             ssh.exec_command("echo '" + password +
                              "' | sudo -S /usr/bin/fail2ban-client status")
@@ -51,20 +77,28 @@ def refresh():
             display_jail[i] = tkinter.Message(data_frame, text=jail_name,
                                               width=250)
             display_jail[i].grid(row=i, column=0, sticky='w')
-            for ip in ip_adresses:
-                display_ip[i] = tkinter.Message(data_frame, text=ip,
+            if ip_adresses:
+                for ip in ip_adresses:
+                    display_ip[i] = tkinter.Message(data_frame, text=ip,
+                                                    width=350)
+                    display_ip[i].grid(row=i, column=1, sticky='w')
+                    unban_button = tkinter.Button(data_frame, text="Unban",
+                                                  command=lambda j=jail_name,
+                                                  x=ip: unban(j, x))
+                    unban_button.grid(row=i, column=2, sticky='w')
+                    i += 1
+            else:
+                display_ip[i] = tkinter.Message(data_frame,
+                                                text='nincs bannolt ip',
                                                 width=350)
                 display_ip[i].grid(row=i, column=1, sticky='w')
-                unban_button = tkinter.Button(data_frame, text="Unban",
-                                              command=lambda j=jail_name,
-                                                             x=ip: unban(j, x))
-                unban_button.grid(row=i, column=2, sticky='w')
-                i += 1
             i += 1
         now = datetime.datetime.today()
         status_label.configure(text='Frissítve: {:%b.%d. - %H:%M:%S}'
                                .format(now))
 
+
+# ------------------------------ Jelszó bekérés --------------------------------
 
 def password_input():
     pwd_window = tkinter.Toplevel(main_window)
@@ -81,6 +115,8 @@ def password_input():
     pwd_window.bind('<KP_Enter>', lambda event: password_ok(pwd_window))
 
 
+# ----------------------------- Jeszó OK gomb ----------------------------------
+
 def password_ok(pwd_window):
     global status_label
     global password
@@ -89,6 +125,8 @@ def password_ok(pwd_window):
     pwd_window.destroy()
     refresh()
 
+
+# --------------------------- SSH kapcsolat kezelése ---------------------------
 
 def ssh_connect():
     global password
@@ -118,20 +156,20 @@ def ssh_connect():
         return False
 
 
+# ------------------------------ Unban -----------------------------------------
+
 def unban(unban_jail_name, unban_ip):
-    # stdin, stdout, stderr = \
-    #     ssh.exec_command("echo '" + password +
-    #                      "' | sudo -S /usr/bin/fail2ban-client status')
-    print(unban_jail_name)
-    print(unban_ip)
+    #    print(unban_jail_name)
+    #    print(unban_ip)
     status_label.configure(text='--> unban <--')
     stdin, stdout, stderr = ssh.exec_command(
         "echo '" + password + "' | sudo -S /usr/bin/fail2ban-client set " +
         unban_jail_name + ' unbanip ' + unban_ip)
+    refresh()
     return
 
 
-# -----------------------------------------------------------------------------
+#  ============================= Főprogram =====================================
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -145,10 +183,11 @@ data_frame = tkinter.Frame(main_window)
 
 refresh_button = tkinter.Button(main_window, text="Frissítés",
                                 command=refresh, activebackground='lightgreen')
-refresh_button.grid(row=0, column=0, sticky='w')
 
 status_label = tkinter.Message(main_window, text='--> Nincs kapcsolat <--',
                                width=200)
+
+refresh_button.grid(row=0, column=0)
 status_label.grid(row=0, column=1)
 
 data_frame.grid(row=1, columnspan=2)
